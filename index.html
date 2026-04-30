@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI大喜利名人 - AIが爆笑回答を叩き出す！</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Yusei+Magic&family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Zen Maru Gothic', sans-serif;
+            /* バラエティ番組風のポップな背景 */
+            background-color: #fbcfe8;
+            background-image: radial-gradient(#f43f5e 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .title-font {
+            font-family: 'Yusei Magic', sans-serif;
+        }
+        .flip-board {
+            /* フリップボード風のデザイン */
+            background: white;
+            border: 4px solid #333;
+            border-radius: 8px;
+            box-shadow: 6px 6px 0px rgba(0, 0, 0, 0.8);
+            position: relative;
+        }
+        .flip-board::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 10px;
+            background: #cbd5e1;
+            border: 2px solid #333;
+            border-radius: 4px;
+        }
+        
+        /* 回答表示のアニメーション */
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop-in {
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* 読み込み中の回転アニメーション */
+        .thinking-icon {
+            animation: spin 2s linear infinite;
+        }
+
+        /* 画面切り替えのフェードイン */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="max-w-2xl w-full bg-white/90 backdrop-blur-sm p-6 sm:p-8 rounded-3xl shadow-2xl border-4 border-pink-400 relative overflow-hidden">
+        
+        <!-- 装飾用 -->
+        <div class="absolute top-0 right-0 w-32 h-32 bg-yellow-300 rounded-bl-full -z-10 opacity-50"></div>
+        <div class="absolute bottom-0 left-0 w-24 h-24 bg-blue-300 rounded-tr-full -z-10 opacity-50"></div>
+
+        <!-- ヘッダー -->
+        <div class="relative text-center mb-8">
+            <button onclick="toggleBGM()" class="absolute -top-2 right-0 sm:-right-2 text-gray-500 hover:text-pink-500 transition-colors font-bold text-sm bg-white border-2 border-gray-200 px-3 py-1.5 rounded-full shadow-sm z-10">
+                <i id="bgmIcon" class="fa-solid fa-volume-xmark mr-1"></i>BGM
+            </button>
+            <h1 class="title-font text-4xl sm:text-5xl font-bold text-gray-800 tracking-wider mb-2 mt-4 sm:mt-0">
+                <i class="fa-solid fa-microphone-lines text-pink-500 mr-2"></i>AI大喜利名人
+            </h1>
+            <p class="text-gray-600 font-bold">どんなお題でも、AIが渾身のボケで返します！</p>
+        </div>
+
+        <!-- 入力セクション -->
+        <div id="inputSection" class="animate-fade-in">
+            <!-- 入力エリア -->
+            <div class="mb-6 space-y-4">
+                <label for="themeInput" class="block text-lg font-bold text-gray-700">
+                    <i class="fa-solid fa-pen-nib mr-2"></i>お題を入力してね
+                </label>
+                <textarea id="themeInput" rows="2" 
+                    class="w-full p-4 text-lg border-4 border-gray-300 rounded-xl focus:border-pink-500 focus:ring-0 transition-colors shadow-inner resize-none font-bold text-gray-800"
+                    placeholder="例：こんな学校は絶対に嫌だ。どんな学校？"></textarea>
+                
+                <!-- お題のサジェスト（テンプレート） -->
+                <div class="flex flex-wrap gap-2 text-sm items-center">
+                    <span class="font-bold text-gray-500 py-1">おまかせお題:</span>
+                    <div id="suggestedThemesContainer" class="flex flex-wrap gap-2">
+                        <!-- JSで動的に生成されます -->
+                    </div>
+                    <button onclick="renderRandomThemes()" class="text-pink-500 hover:text-pink-700 transition-colors p-1" title="お題をシャッフル">
+                        <i class="fa-solid fa-dice text-2xl hover:rotate-180 transition-transform duration-300"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 送信ボタン（RPGコマンド風に変更） -->
+            <button id="submitBtn" onclick="generateAnswer()" 
+                class="w-full bg-black text-white font-bold py-4 px-6 rounded-lg text-xl border-4 border-white shadow-[0_6px_0_#4b5563] active:shadow-[0_0px_0_#4b5563] active:translate-y-[6px] transition-all title-font relative overflow-hidden group mt-6">
+                <div class="absolute inset-0 border-2 border-gray-400 m-1 rounded pointer-events-none"></div>
+                <div class="flex items-center justify-center space-x-4 tracking-widest">
+                    <span class="text-2xl animate-pulse text-yellow-300">▶</span>
+                    <span>ＡＩ に ボケさせる</span>
+                </div>
+            </button>
+
+            <!-- メッセージ・エラー表示エリア -->
+            <div id="messageArea" class="mt-4 text-center font-bold text-red-500 hidden"></div>
+        </div>
+        
+        <!-- 結果表示セクション -->
+        <div id="resultSection" class="hidden animate-fade-in flex-col items-center justify-center min-h-[300px]">
+            <!-- お題の再確認 -->
+            <div class="w-full text-center mb-6">
+                <p class="text-sm text-gray-500 font-bold mb-1">今回のお題</p>
+                <div id="currentThemeDisplay" class="text-xl sm:text-2xl font-bold text-gray-800 bg-white/60 px-4 py-3 rounded-xl border-2 border-dashed border-gray-300">
+                    <!-- お題がここに入る -->
+                </div>
+            </div>
+
+            <div class="text-center mb-2 w-full">
+                <span class="bg-gray-800 text-white px-6 py-1.5 rounded-t-lg font-bold title-font text-lg">AIの回答</span>
+            </div>
+            <div class="flip-board p-8 text-center min-h-[150px] flex items-center justify-center flex-col w-full">
+                <div id="loadingIndicator" class="hidden flex-col items-center justify-center text-gray-500 space-y-3 w-full h-full">
+                    <i class="fa-solid fa-spinner text-4xl thinking-icon text-pink-500"></i>
+                    <p class="font-bold">AIが必死にひねり出しています...</p>
+                </div>
+                <div id="answerText" class="title-font text-3xl sm:text-4xl text-gray-900 leading-tight hidden w-full break-words">
+                    <!-- 回答がここに入る -->
+                </div>
+            </div>
+            
+            <!-- アクションボタン群 -->
+            <div class="w-full mt-8 hidden" id="actionButtons">
+                <!-- シェア・コピー系 -->
+                <div class="flex justify-center gap-2 sm:gap-4 mb-6" id="shareButtonsRow">
+                    <button onclick="copyToClipboard()" class="text-gray-600 bg-gray-100 hover:bg-gray-200 font-bold px-4 py-2 rounded-lg transition-colors text-sm sm:text-base">
+                        <i class="fa-regular fa-copy mr-1"></i>コピー
+                    </button>
+                    <button onclick="shareOnTwitter()" class="text-white bg-[#1DA1F2] hover:bg-[#1a8cd8] font-bold px-4 py-2 rounded-lg transition-colors text-sm sm:text-base">
+                        <i class="fa-brands fa-twitter mr-1"></i>ポストする
+                    </button>
+                </div>
+                
+                <!-- ナビゲーション系 -->
+                <div class="flex flex-col sm:flex-row justify-center gap-3 w-full border-t-2 border-gray-200 pt-6">
+                    <button onclick="retrySameTheme()" class="flex-1 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold py-3 px-4 rounded-xl shadow-sm transition-colors text-lg">
+                        <i class="fa-solid fa-rotate-right mr-2"></i>もう一度ボケさせる
+                    </button>
+                    <button onclick="resetToInput()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 px-4 rounded-xl shadow-sm transition-colors text-lg">
+                        <i class="fa-solid fa-pen mr-2"></i>他のお題にする
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const apiKey = "";
+        const themeInput = document.getElementById('themeInput');
+        const submitBtn = document.getElementById('submitBtn');
+        const inputSection = document.getElementById('inputSection');
+        const resultSection = document.getElementById('resultSection');
+        const currentThemeDisplay = document.getElementById('currentThemeDisplay');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const answerText = document.getElementById('answerText');
+        const messageArea = document.getElementById('messageArea');
+        const actionButtons = document.getElementById('actionButtons');
+        const shareButtonsRow = document.getElementById('shareButtonsRow');
+        const suggestedThemesContainer = document.getElementById('suggestedThemesContainer');
+
+        // おまかせお題のプール
+        const themePool = [
+            "こんな学校は絶対に嫌だ。どんな学校？",
+            "100年後のiPhoneの画期的な新機能とは？",
+            "初めてのお使いで5歳児が買ってきた、絶対に違うものとは？",
+            "「このレストラン、絶対につぶれるな」なぜそう思った？",
+            "透明人間になったら、まず一番にバレそうなドジとは？",
+            "おばあちゃんが「最近の若者は…」の後に続けた驚愕の一言",
+            "桃太郎のお供に「犬、猿、キジ」以外が加わりました。誰？",
+            "魔法使いが魔法の杖を忘れてきた！代わりに何を使った？",
+            "宇宙人が地球に来て、一番驚いた日本の文化とは？",
+            "校長先生の話が長すぎる！実は何をしている？",
+            "勇者が魔王を倒すのをやめました。その理由とは？",
+            "ドラえもんがポケットから出した、全く役に立たない道具とは？",
+            "「このお化け屋敷、全然怖くないな」なぜ？",
+            "サンタクロースがプレゼントを配るのをやめた理由とは？",
+            "コンビニのレジ横で売られていた、信じられないものとは？"
+        ];
+
+        // 過去の回答履歴を保存するオブジェクト
+        const answerHistory = {};
+
+        // カラーパレット（お題ボタン用）
+        const buttonColors = [
+            "bg-blue-100 hover:bg-blue-200 text-blue-800",
+            "bg-green-100 hover:bg-green-200 text-green-800",
+            "bg-yellow-100 hover:bg-yellow-200 text-yellow-800",
+            "bg-purple-100 hover:bg-purple-200 text-purple-800",
+            "bg-rose-100 hover:bg-rose-200 text-rose-800"
+        ];
+
+        // ランダムなお題を描画する関数
+        function renderRandomThemes() {
+            suggestedThemesContainer.innerHTML = '';
+            // 配列をシャッフルして3つ取り出す
+            const shuffled = [...themePool].sort(() => 0.5 - Math.random());
+            const selectedThemes = shuffled.slice(0, 3);
+
+            selectedThemes.forEach((theme, index) => {
+                const colorClass = buttonColors[index % buttonColors.length];
+                const btn = document.createElement('button');
+                btn.className = `${colorClass} px-3 py-1 rounded-full font-bold transition-colors text-left max-w-[200px] truncate`;
+                btn.title = theme; // ホバーで全文表示
+                // 長い場合は省略して表示
+                const displayText = theme.length > 12 ? theme.substring(0, 12) + '...' : theme;
+                btn.textContent = displayText;
+                btn.onclick = () => setTheme(theme);
+                suggestedThemesContainer.appendChild(btn);
+            });
+        }
+
+        // 回答を音声で読み上げる関数
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                speechSynthesis.cancel(); // 前の音声をキャンセル
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'ja-JP';
+                utterance.rate = 1.1;  // 少しテンポよく
+                utterance.pitch = 1.3; // 少し高めでコミカルに
+                speechSynthesis.speak(utterance);
+            }
+        }
+
+        // BGM用のWeb Audio API実装（簡易シーケンサー）
+        let audioCtx;
+        let isPlayingBgm = false;
+        let isBgmInitialized = false;
+        let nextNoteTime = 0;
+        let currentNote = 0;
+        let timerID;
+
+        // 穏やかでリラックスできるメロディパターン
+        // 周波数（Hz）
+        const C4 = 261.63, D4 = 293.66, E4 = 329.63, G4 = 392.00, A4 = 440.00, C5 = 523.25;
+        const melody = [
+            C4, E4, G4, C5,
+            A4, G4, E4, C4,
+            D4, F4 = 349.23, A4, G4,
+            E4, D4, C4, 0
+        ];
+        const tempo = 80; // テンポをゆっくりに
+
+        function playNote(time, freq) {
+            if (freq === 0) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.type = 'sine'; // オルゴールのような柔らかい正弦波
+            osc.frequency.value = freq;
+            
+            // ゆったりと消えていくエンベロープ
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.15, time + 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.5);
+            
+            osc.start(time);
+            osc.stop(time + 0.6);
+        }
+
+        function nextNote() {
+            const secondsPerBeat = 60.0 / tempo;
+            nextNoteTime += 0.25 * secondsPerBeat; // 16分音符
+            currentNote = (currentNote + 1) % melody.length;
+        }
+
+        function scheduler() {
+            while (nextNoteTime < audioCtx.currentTime + 0.1) {
+                playNote(nextNoteTime, melody[currentNote]);
+                nextNote();
+            }
+            timerID = setTimeout(scheduler, 25);
+        }
+
+        // BGMを初期化して再生する関数
+        function initAndPlayBGM() {
+            if (isBgmInitialized) return;
+            
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            isPlayingBgm = true;
+            isBgmInitialized = true;
+            nextNoteTime = audioCtx.currentTime + 0.05;
+            scheduler();
+            
+            const btnIcon = document.getElementById('bgmIcon');
+            if (btnIcon) {
+                btnIcon.className = 'fa-solid fa-volume-high mr-1';
+                btnIcon.parentElement.classList.add('text-pink-500', 'border-pink-300');
+            }
+        }
+
+        // ユーザーが画面のどこかを操作した瞬間にBGMを開始する（自動再生のブラウザ制限対策）
+        ['click', 'keydown', 'touchstart'].forEach(evt => {
+            window.addEventListener(evt, () => {
+                if (!isBgmInitialized && !isPlayingBgm) {
+                    initAndPlayBGM();
+                }
+            }, { once: true });
+        });
+
+        function toggleBGM() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            const btnIcon = document.getElementById('bgmIcon');
+            
+            if (isPlayingBgm) {
+                clearTimeout(timerID);
+                isPlayingBgm = false;
+                isBgmInitialized = false; // 再度開始できるようにフラグを下ろす
+                btnIcon.className = 'fa-solid fa-volume-xmark mr-1';
+                btnIcon.parentElement.classList.remove('text-pink-500', 'border-pink-300');
+            } else {
+                initAndPlayBGM();
+            }
+        }
+
+        // 初期化処理
+        window.addEventListener('DOMContentLoaded', () => {
+            renderRandomThemes();
+        });
+
+        // おまかせお題をセットする関数
+        function setTheme(text) {
+            themeInput.value = text;
+            themeInput.focus();
+        }
+
+        // メッセージを表示する関数
+        function showMessage(text, isError = true) {
+            messageArea.textContent = text;
+            messageArea.className = `mt-4 text-center font-bold ${isError ? 'text-red-500' : 'text-green-500'} block`;
+            setTimeout(() => {
+                messageArea.classList.add('hidden');
+            }, 3000);
+        }
+
+        // 指数バックオフを用いたAPI呼び出し関数
+        async function fetchWithRetry(url, options, maxRetries = 5) {
+            const delays = [1000, 2000, 4000, 8000, 16000];
+            
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    console.error(`Attempt ${i + 1} failed: ${error.message}`);
+                    if (i === maxRetries - 1) throw error;
+                    await new Promise(resolve => setTimeout(resolve, delays[i]));
+                }
+            }
+        }
+
+        // 画面をリセットして入力画面に戻る
+        function resetToInput() {
+            resultSection.classList.add('hidden');
+            resultSection.classList.remove('flex');
+            inputSection.classList.remove('hidden');
+            // アニメーション再トリガー
+            inputSection.classList.remove('animate-fade-in');
+            void inputSection.offsetWidth;
+            inputSection.classList.add('animate-fade-in');
+            
+            themeInput.value = '';
+            themeInput.focus();
+        }
+
+        // 同じお題でもう一度ボケる
+        function retrySameTheme() {
+            generateAnswer();
+        }
+
+        // AIに回答を生成させるメイン処理
+        async function generateAnswer() {
+            // お題の取得（入力画面から呼ばれた場合はテキストボックスから、再試行時は currentThemeDisplay からも取れるようにする）
+            let theme = themeInput.value.trim();
+            if (!theme && currentThemeDisplay.textContent.trim()) {
+                theme = currentThemeDisplay.textContent.trim();
+            }
+
+            if (!theme) {
+                showMessage("お題を入力するか、おまかせお題を選んでね！");
+                themeInput.focus();
+                return;
+            }
+
+            // UI状態の更新（画面切り替えとローディング）
+            inputSection.classList.add('hidden');
+            resultSection.classList.remove('hidden');
+            resultSection.classList.add('flex');
+            
+            // アニメーション再トリガー
+            resultSection.classList.remove('animate-fade-in');
+            void resultSection.offsetWidth;
+            resultSection.classList.add('animate-fade-in');
+
+            currentThemeDisplay.textContent = theme;
+            
+            answerText.classList.add('hidden');
+            answerText.classList.remove('text-red-500'); // エラー時の赤文字リセット
+            answerText.classList.remove('animate-pop-in');
+            actionButtons.classList.add('hidden');
+            shareButtonsRow.classList.remove('hidden'); // エラー時に隠したシェアボタンを戻す
+            loadingIndicator.classList.remove('hidden');
+            loadingIndicator.classList.add('flex');
+            messageArea.classList.add('hidden');
+
+            // 履歴の初期化とプロンプトの作成
+            if (!answerHistory[theme]) {
+                answerHistory[theme] = [];
+            }
+            
+            let historyPrompt = "";
+            if (answerHistory[theme].length > 0) {
+                historyPrompt = `\n【重要】以下の過去の回答とは絶対に違う、全く新しいアプローチの回答をしてください。\n過去の回答:\n- ${answerHistory[theme].join('\n- ')}`;
+            }
+
+            // Gemini APIの準備
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            
+            // システムプロンプト（AIにお笑い芸人として振る舞わせる）
+            const systemPrompt = `
+                あなたはお笑い界のレジェンドであり、大喜利の達人です。
+                ユーザーから「大喜利のお題」が提供されます。
+                そのお題に対して、思わずクスッと笑ってしまうような、予想外で、少しシュールで、パンチの効いた短い回答を1つだけ提供してください。
+                【絶対に守るルール】
+                ・説明、前置き、挨拶は一切不要です。
+                ・「回答：」などのラベルや、カギカッコ（「」）は付けないでください。
+                ・短く、テンポ良く、キレのある言葉遣いにしてください（長文はNG）。
+                ・回答のテキストのみを出力してください。${historyPrompt}
+            `;
+
+            const payload = {
+                contents: [{
+                    parts: [{ text: `お題：${theme}` }]
+                }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+                generationConfig: {
+                    temperature: 0.9 // 少し高めにして予想外の回答を引き出す
+                }
+            };
+
+            try {
+                // API呼び出し
+                const data = await fetchWithRetry(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                // 結果の抽出
+                const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (responseText) {
+                    const cleanResponse = responseText.trim();
+                    
+                    // 履歴に追加
+                    answerHistory[theme].push(cleanResponse);
+
+                    // 表示の更新
+                    loadingIndicator.classList.add('hidden');
+                    loadingIndicator.classList.remove('flex');
+                    answerText.textContent = cleanResponse;
+                    answerText.classList.remove('hidden');
+                    // アニメーションを再トリガーするために一度voidで読み取る
+                    void answerText.offsetWidth;
+                    answerText.classList.add('animate-pop-in');
+                    actionButtons.classList.remove('hidden');
+
+                    // アニメーション開始と同時に音声を読み上げる
+                    speakText(cleanResponse);
+                } else {
+                    throw new Error("回答の取得に失敗しました。");
+                }
+
+            } catch (error) {
+                console.error("API Error:", error);
+                loadingIndicator.classList.add('hidden');
+                loadingIndicator.classList.remove('flex');
+                
+                // エラー時はメッセージを表示しつつ、戻るボタンだけ出す
+                answerText.textContent = "ごめん！AIがスベった（エラー発生）みたい。";
+                answerText.classList.remove('hidden');
+                answerText.classList.add('text-red-500');
+                actionButtons.classList.remove('hidden');
+                shareButtonsRow.classList.add('hidden'); // シェア系は隠す
+            }
+        }
+
+        // クリップボードにコピー
+        function copyToClipboard() {
+            const theme = themeInput.value.trim();
+            const answer = answerText.textContent;
+            const textToCopy = `お題：${theme}\nAIの回答：${answer}\n#AI大喜利名人`;
+            
+            // execCommandをフォールバックとして使用（iframe内対応）
+            const textArea = document.createElement("textarea");
+            textArea.value = textToCopy;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                showMessage("コピーしたよ！", false);
+            } catch (err) {
+                console.error('Unable to copy', err);
+                showMessage("コピーに失敗しました。");
+            }
+            document.body.removeChild(textArea);
+        }
+
+        // X (Twitter) でシェア
+        function shareOnTwitter() {
+            const theme = themeInput.value.trim();
+            const answer = answerText.textContent;
+            const text = encodeURIComponent(`お題：${theme}\nAIの回答：${answer}\n\n#AI大喜利名人 #AI大喜利`);
+            window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
+        }
+    </script>
+</body>
+</html>
